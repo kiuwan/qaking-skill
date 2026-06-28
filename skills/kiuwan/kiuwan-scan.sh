@@ -64,8 +64,29 @@ else
   exit 1
 fi
 
-AGENT="$KIUWAN_HOME/bin/agent.sh"
 PROPS="$KIUWAN_HOME/conf/agent.properties"
+
+# ── Pick the right KLA launcher for the platform ─────────────────────────────
+# The KLA ships both bin/agent.sh (Unix) and bin/agent.cmd (Windows). Under
+# Git Bash/MSYS the Unix launcher builds a ':'-separated, /x/-style classpath
+# the Windows JVM can't read (ClassNotFoundException), so on Windows we drive
+# bin/agent.cmd and pass Windows-form paths (via cygpath). topath() converts a
+# bash path to the form the launcher expects; run_agent() invokes the launcher.
+case "$(uname -s 2>/dev/null)" in
+  MINGW*|MSYS*|CYGWIN*) IS_WINDOWS=1 ;;
+  *)                    IS_WINDOWS=0 ;;
+esac
+
+if [ "$IS_WINDOWS" = 1 ]; then
+  AGENT="$KIUWAN_HOME/bin/agent.cmd"
+  [ -f "$AGENT" ] || { err "Windows detected but no bin/agent.cmd in '$KIUWAN_HOME'"; exit 1; }
+  topath()    { cygpath -w "$1"; }
+  run_agent() { MSYS2_ARG_CONV_EXCL='*' "$AGENT" "$@"; }
+else
+  AGENT="$KIUWAN_HOME/bin/agent.sh"
+  topath()    { printf '%s' "$1"; }
+  run_agent() { "$AGENT" "$@"; }
+fi
 
 # ── Resolve project dir + app name ───────────────────────────────────────────
 if [ -z "$SRC" ]; then
@@ -96,7 +117,7 @@ LOG="$OUT/agent.log"
 # ── 1. Analyze + upload + wait for results ───────────────────────────────────
 echo "kiuwan: analyzing '$APP' ($SRC)"
 echo "kiuwan: uploading to your Kiuwan account and waiting for results (this can take a few minutes)..."
-"$AGENT" -n "$APP" -s "$SRC" -c -wr -o "$OUT/summary.json" > "$LOG" 2>&1
+run_agent -n "$APP" -s "$(topath "$SRC")" -c -wr -o "$(topath "$OUT/summary.json")" > "$LOG" 2>&1
 RC=$?
 # Success is judged by output produced, not exit code: the architecture analysis
 # step can throw on some engine builds while the code analysis still completes.
@@ -107,7 +128,7 @@ if [ ! -s "$OUT/summary.json" ]; then
 fi
 
 # ── 2. Retrieve security findings + taint dataflow (KLA threadfix; no deps) ───
-"$AGENT" -rd -n "$APP" -f threadfix -o "$OUT/findings.json" >> "$LOG" 2>&1 \
+run_agent -rd -n "$APP" -f threadfix -o "$(topath "$OUT/findings.json")" >> "$LOG" 2>&1 \
   || err "note: threadfix retrieval failed (security dataflow may be unavailable)"
 
 # ── 3. Format the security findings with awk and print to stdout ─────────────

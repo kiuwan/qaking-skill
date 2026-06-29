@@ -1,43 +1,74 @@
-# Kiuwan Skill for Claude Code
+# Kiuwan Skill for AI Coding Assistants
 
-This is a [Claude Code](https://claude.com/claude-code) **skill** that lets your AI assistant run a real [Kiuwan](https://www.kiuwan.com) analysis on your project and then remediate the results. It drives the **Kiuwan Local Analyzer (KLA)** — the same command-line analyzer you already use — to scan your code, and brings the **security findings** (with CWE and source→sink taint dataflow) back to the assistant so it can explain and fix them in your editor. Think of it as wiring Kiuwan's engine and findings directly into your AI coding workflow: you say "run a Kiuwan scan and fix what it finds," and the assistant analyzes, retrieves the findings, and works through them with you.
+A skill that lets your AI coding assistant run a real [Kiuwan](https://www.kiuwan.com) security analysis on your project and remediate the results. It drives the **Kiuwan Local Analyzer (KLA)** to scan your code and brings the security findings — with CWE and source→sink taint dataflow — back to the assistant so it can explain and fix them in your editor. You say _"run a Kiuwan scan and fix what it finds,"_ and the assistant analyzes, retrieves the findings, and works through them with you.
 
-Under the hood the skill runs a normal KLA analysis, which **uploads results to your own Kiuwan account** (so they also appear in your Kiuwan dashboards and baselines), then retrieves the **security findings — with their source→sink taint dataflow** — through the analyzer's own threadfix export. The helper needs **no extra tooling** — just `bash`, `awk`, and the Java-based KLA you already have (no Python, jq, curl, or other interpreters), so it runs wherever Claude Code runs. It does not store or transmit your credentials anywhere except through the KLA you already configured.
+## How it works
 
-## Setup (one time)
+The skill runs a normal KLA analysis, which **uploads results to your own Kiuwan account** (so they also appear in your Kiuwan dashboards and baselines), then brings the security findings — with their source→sink taint dataflow — back to your assistant to explain and fix. It needs nothing installed beyond the KLA you already have.
 
-1. **Install the Kiuwan Local Analyzer** from your Kiuwan account and note its directory (the folder containing `bin/agent.sh`).
-2. **Configure your Kiuwan credentials and endpoint** in `KiuwanLocalAnalyzer/conf/agent.properties` — set `username`/`password` (or `apiToken`), and make sure `url` / `rest.services.url` point at your Kiuwan (SaaS or on-prem). This is the same configuration you'd use to run the analyzer manually.
-3. **Install the skill** using either method:
+## Installation
 
-   - **Skills CLI** (requires Node.js). Installs into the current project's `.claude/skills/`; add `-g` to install globally into `~/.claude/skills/`:
-     ```sh
-     npx skills add kiuwan/qaking-skill -a claude-code
-     ```
-   - **Manual** (clone and copy the skill folder into your global skills directory):
-     ```sh
-     git clone https://github.com/kiuwan/qaking-skill.git
-     cp -r qaking-skill/skills/kiuwan ~/.claude/skills/
-     ```
-4. **Tell the skill where your analyzer is** — either:
-   - export `KIUWAN_HOME` (add it to your shell profile so it persists):
-     ```sh
-     export KIUWAN_HOME=/path/to/KiuwanLocalAnalyzer
-     ```
-   - or just run once with `--home` and it will be remembered:
-     ```sh
-     bash <skill-dir>/kiuwan-scan.sh --home /path/to/KiuwanLocalAnalyzer
-     ```
-   The location is saved to `~/.config/kiuwan-skill/home`, so you only set it once.
+Install the skill into your assistant's skills directory using **either** method. It works with Claude Code, Cursor, Codex, and other AI coding assistants.
 
-   `<skill-dir>` is wherever the skill was installed — `~/.claude/skills/kiuwan` for a global/manual install, or `.claude/skills/kiuwan` for a project-scoped one.
+### Option A — Skills CLI
+
+Cross-platform; requires Node.js. Pick your assistant with `-a` — the CLI supports Claude Code, Cursor, Codex, and many others, and you can pass several at once. Add `-g` to install globally, or omit it to install into the current project:
+
+```sh
+npx skills add kiuwan/qaking-skill -a claude-code          # or -a cursor / -a codex
+npx skills add kiuwan/qaking-skill -a claude-code -a cursor -a codex   # several at once
+```
+
+### Option B — Manual (clone and copy)
+
+Clone the repository and copy the `skills/kiuwan` folder into your assistant's global skills directory:
+
+| Assistant | macOS / Linux | Windows |
+| --- | --- | --- |
+| Claude Code | `~/.claude/skills/` | `%USERPROFILE%\.claude\skills\` |
+| Cursor | `~/.cursor/skills/` | `%USERPROFILE%\.cursor\skills\` |
+| Codex | `~/.codex/skills/` | `%USERPROFILE%\.codex\skills\` |
+
+Run the commands for your shell. The examples target Claude Code — swap `.claude` for `.cursor` or `.codex` for those assistants:
+
+**macOS / Linux / Git Bash**
+
+```sh
+git clone https://github.com/kiuwan/qaking-skill.git
+mkdir -p ~/.claude/skills && cp -r qaking-skill/skills/kiuwan ~/.claude/skills/
+```
+
+**Windows cmd**
+
+```bat
+git clone https://github.com/kiuwan/qaking-skill.git
+xcopy /E /I /Y qaking-skill\skills\kiuwan "%USERPROFILE%\.claude\skills\kiuwan"
+```
+
+This creates a `kiuwan/` folder (containing `SKILL.md`, `kiuwan-scan.sh`, and `report.awk`) inside your skills directory.
+
+## Configuration
+
+Point the skill at your analyzer by setting the `KIUWAN_HOME` environment variable to the KLA directory.
+
+**macOS / Linux / Git Bash** — add to your shell profile (e.g. `~/.bashrc` or `~/.zshrc`) so it persists:
+
+```sh
+export KIUWAN_HOME=/path/to/KiuwanLocalAnalyzer
+```
+
+**Windows** — sets it for new shells, including Git Bash:
+
+```bat
+setx KIUWAN_HOME "C:\path\to\KiuwanLocalAnalyzer"
+```
+
+Restart your assistant afterward so it picks up the variable.
 
 ## Usage
 
-In Claude Code, just ask — for example: *"run a Kiuwan scan on this project and fix the findings."* The assistant will analyze the project, retrieve the security findings, present them grouped by file (severity, rule, `file:line`, CWE, and the source→sink taint dataflow), and help you remediate them. You can also run the analyzer wrapper directly:
+In your AI assistant, just ask — for example:
 
-```sh
-bash <skill-dir>/kiuwan-scan.sh [project-dir] [app-name]
-```
+> Run a Kiuwan scan on this project
 
-`project-dir` defaults to your git top-level (or current directory); `app-name` defaults to the project folder name and is created in Kiuwan automatically if it doesn't exist.
+The assistant analyzes the project, retrieves the security findings, presents them grouped by file (severity, rule, `file:line`, CWE, and the source→sink taint dataflow), and helps you remediate them.

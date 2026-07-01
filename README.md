@@ -8,14 +8,14 @@ The skill runs a normal KLA analysis, which **uploads results to your own Kiuwan
 
 ## Installation
 
-Install the skill into your assistant's skills directory using **either** method. It works with Claude Code, Cursor, Codex, and other AI coding assistants.
+Install the skill into your assistant's skills directory using **either** method. It is compatible with Claude Code, Cursor, Codex, Copilot, Gemini, and almost any AI coding assistant, whether cloud-based or local, that supports skill invocation.
 
 ### Option A — Skills CLI
 
 Cross-platform; requires Node.js. Pick your assistant with `-a` — the CLI supports Claude Code, Cursor, Codex, and many others, and you can pass several at once. Add `-g` to install globally, or omit it to install into the current project:
 
 ```sh
-npx skills add kiuwan/qaking-skill -a claude-code          # or -a cursor / -a codex
+npx skills add kiuwan/qaking-skill -a claude-code    # identifiers: cursor, codex, github-copilot, gemini-cli, ...
 npx skills add kiuwan/qaking-skill -a claude-code -a cursor -a codex   # several at once
 ```
 
@@ -28,8 +28,10 @@ Clone the repository and copy the `skills/kiuwan` folder into your assistant's g
 | Claude Code | `~/.claude/skills/` | `%USERPROFILE%\.claude\skills\` |
 | Cursor | `~/.cursor/skills/` | `%USERPROFILE%\.cursor\skills\` |
 | Codex | `~/.codex/skills/` | `%USERPROFILE%\.codex\skills\` |
+| Copilot | `~/.copilot/skills/` | `%USERPROFILE%\.copilot\skills\` |
+| Gemini | `~/.gemini/skills/` | `%USERPROFILE%\.gemini\skills\` |
 
-Run the commands for your shell. The examples target Claude Code — swap `.claude` for `.cursor` or `.codex` for those assistants:
+Run the commands for your shell. The examples target Claude Code — swap `.claude` for the directory of your assistant from the table above:
 
 **macOS / Linux / Git Bash**
 
